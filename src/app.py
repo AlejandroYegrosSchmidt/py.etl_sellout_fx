@@ -1,5 +1,4 @@
 import streamlit as st
-from etl import transform_data
 from database import save_to_db, get_engine
 from sqlalchemy import text
 

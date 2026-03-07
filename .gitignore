@@ -10,3 +10,4 @@ __pycache__/
 >>>>>>> 9020635 (Agregamos los files con la estructura del proyecto al repositorio)
 .DS_Store
 data/*.xlsx
+temp_data.txt
