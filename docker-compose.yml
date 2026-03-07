@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: user_etl
+      POSTGRES_PASSWORD: password_etl
+      POSTGRES_DB: db_sellout
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: streamlit_app
+    volumes:
+      - .:/app
+    ports:
+      - "8501:8501"
+    environment:
+      - DATABASE_URL=postgresql://user_etl:password_etl@db:5432/db_sellout
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

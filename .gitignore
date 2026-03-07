@@ -1,6 +1,12 @@
+<<<<<<< HEAD
 venv_etl/
 __pycache__/
 *.pyc
 .env
+=======
+__pycache__/
+*.pyc
+.venv_etl/
+>>>>>>> 9020635 (Agregamos los files con la estructura del proyecto al repositorio)
 .DS_Store
 data/*.xlsx
