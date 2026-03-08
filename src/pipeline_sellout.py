@@ -1,6 +1,9 @@
 import pandas as pd
 from IA_Agent import agente_modelo  
 import warnings
+import os
+from sqlalchemy import create_engine
+
 
 # Filtra específicamente la advertencia de estilos de openpyxl
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl.styles.stylesheet")
@@ -9,10 +12,23 @@ class processing_pipeline:
     def __init__(self, ruta):
         self.engine = None
         self.ruta = ruta 
-        self.engine = None
         self.df_config = agente_modelo.extraer_parametros_excel(self.ruta)
         self.df = None
+
+    def get_engine(self):
+        # Buscamos la variable que definiste en el docker-compose
+        # Si no la encuentra (ej. corriendo fuera de Docker), usa localhost
+        url = os.getenv(
+            "DATABASE_URL", 
+            "postgresql://user_etl:password_etl@localhost:5432/db_sellout"
+        )
         
+        # Importante: SQLAlchemy prefiere 'postgresql+psycopg2://' 
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+            
+        return create_engine(url)
+
     def datavalidation(self, df = None, df_colum_validate = None, tabla_sql= None, columna_sql = None):
         """
         Docstring for datavalidation
@@ -20,8 +36,8 @@ class processing_pipeline:
         Evitamos duplicados en la base de datos.
         """
         try:
-            engine = self.engine
-            sql_existentes = pd.read_sql(f"SELECT `{columna_sql}` FROM {tabla_sql}", con=engine)
+            engine = self.engine()
+            sql_existentes = pd.read_sql(f'SELECT "{columna_sql}" FROM {tabla_sql}', con=engine)
             df = df[~df[f'{df_colum_validate}'].isin(sql_existentes[f'{columna_sql}'])]
             df.to_sql(name=tabla_sql, con=engine, if_exists="append", index=False)
             print(f"Exportacion a {tabla_sql} realizado, se exportaron {len(df)} registros.")
@@ -209,3 +225,18 @@ class processing_pipeline:
         print("#########################################################################\n")
 
         return df 
+    
+    def exportacion(self):
+            print('Export process has been starting')
+
+            print('Export articulos')
+            # Verificamos la existencia de nuevos articulos y exportamos unicamente los nuevos articulos
+            self.validacion_sql(df=self.articulos, df_colum_validate='cod_producto',tabla_sql = None, columna_sql='cod_producto')
+            
+            # Verificamos la existencia de nuevas zonas geograficas y exportamos unicamente las nuevas zonas
+            print('Export sucursales')
+            self.validacion_sql(df=self.sucursales, df_colum_validate='cod_sucursal', tabla_sql = None, columna_sql='cod_sucursal')            
+            
+            print('Export datos')
+            df.to_sql(name=self.ft_ventas, con=self.engine, if_exists="append", index=False)
+            
