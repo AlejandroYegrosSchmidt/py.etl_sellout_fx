@@ -1,10 +1,17 @@
 import pandas as pd
 from IA_Agent import agente_modelo  
+import warnings
+
+# Filtra específicamente la advertencia de estilos de openpyxl
+warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl.styles.stylesheet")
 
 class processing_pipeline:
     def __init__(self, ruta):
         self.engine = None
         self.ruta = ruta 
+        self.engine = None
+        self.df_config = agente_modelo.extraer_parametros_excel(self.ruta)
+        self.df = None
         
     def datavalidation(self, df = None, df_colum_validate = None, tabla_sql= None, columna_sql = None):
         """
@@ -38,18 +45,18 @@ class processing_pipeline:
             print("No hay datos para limpiar. Carga los datos primero.") 
         return self.df
     
-    def create_final_dataframe(self):
+    def create_final_dataframe(self):   
             """
             Crea un DF limpio mapeando cada columna deseada individualmente.
             """
-            df_config = agente_modelo.extraer_parametros_excel(self.ruta)
-
+            
             # 1. Carga inicial del Excel
-            df_raw = pd.read_excel(self.ruta, header=df_config['header'])
+            df_raw = pd.read_excel(self.ruta, header=self.df_config['header'])
             
             # 2. Diccionario de columnas que queremos (mapeo de la IA)
             # Excluimos metadatos del agente
-            target_columns = {k: v for k, v in df_config.items() if k not in ['header', 'sheet_name', 'data_start_row']}
+            exclude_keys = ['header', 'sheet_name', 'data_start_row','cadena']  
+            target_columns = {key: value for key, value in self.df_config.items() if key not in exclude_keys}
 
             # 3. Construir el DataFrame final columna por columna
             # Esto evita duplicados y desorden
@@ -64,9 +71,100 @@ class processing_pipeline:
                     # Si la IA no la encontró, la creamos vacía para no romper el esquema SQL
                     df_final[nombre_estandar] = None
 
+            # Agregamos la columna de posting date
+            df_final['posting_date'] = pd.to_datetime('today').normalize()
+
+            # Filtramos 0 y nan
+            df_final['venta'] = pd.to_numeric(df_final['venta'], errors='coerce').fillna(0).round(2)
+            df_final['cantidad'] = pd.to_numeric(df_final['cantidad'], errors='coerce').fillna(0)
+            df_final = df_final[df_final['venta'] != 0]
+            df_final = df_final[df_final['cantidad'] != 0] 
+
             print("#########################################################################")
             print('\n Dataframe preprocesado con éxito (Columnas únicas) \n')           
-            print("#########################################################################")
-            print(df_final.head())
+            print("#########################################################################'\n")
+            print(df_final.head(3))
+            print('\n')
+            self.df = df_final
             
             return df_final
+    
+    def dim_articulos(self):
+        """
+        Creamos la dimension articulos de cadena
+        """
+        df = self.df.copy()
+
+        if self.df_config.get('cadena') == 'TATA':
+            try:
+                # Creamos la dimension de articulos
+                print("#########################################################################")
+                print(" Dimension articulos")
+                print("#########################################################################\n")
+                dim_articulos = df[['cod_producto','producto_name']]
+                dim_articulos = dim_articulos.drop_duplicates(subset='cod_producto')
+                dim_articulos = dim_articulos[dim_articulos['cod_producto'].notnull()]
+                print(dim_articulos)
+
+            except Exception as e:
+                print(f"Error en la dimension articulos: {e}")
+        
+        print("#########################################################################")
+        print('Resumen')
+        print(f"··· Nro de articulos {len(dim_articulos):,.0f}".replace(",", "."))
+        print("#########################################################################\n")
+
+        return df
+    
+    def dim_sucursal(self):
+        """
+        Creamos la dimesion sucursal de cada cadena
+        """
+        df = self.df.copy()
+
+        if self.df_config.get('cadena') == 'TATA':
+            try:
+                # Creamos la dimension de articulos
+                print("#########################################################################")
+                print(" Dimension sucursal")
+                print("#########################################################################\n")
+                dim_sucursales = df[['cod_sucursal','sucursal_name']]
+                dim_sucursales = dim_sucursales.drop_duplicates(subset='cod_sucursal')
+                dim_sucursales = dim_sucursales[dim_sucursales['cod_sucursal'].notnull()]
+                print(dim_sucursales)
+
+            except Exception as e:
+                print(f"Error en la dimension sucursal: {e}")
+        
+        print("#########################################################################")
+        print('Resumen')
+        print(f"··· Nro de sucursales {len(dim_sucursales):,.0f}".replace(",", "."))
+        print("#########################################################################\n")
+
+        return df
+    
+    def ft_ventas(self):
+        """
+        Creamos la dimension sucursal de cada cadena
+        """
+        df = self.df.copy()
+
+        if self.df_config.get('cadena') == 'TATA':
+            try:
+                # Creamos la dimension de articulos
+                print("#########################################################################")
+                print(" Fact table ventas")
+                print("#########################################################################\n")
+                ft_ventas = df[['fecha','cod_producto','cod_sucursal','venta','cantidad','posting_date']]
+                print(ft_ventas)
+            except Exception as e:
+                print(f"Error en la fact table ventas: {e}")
+        
+        print("#########################################################################")
+        print('Resumen')
+        print(f"··· Ventas: {ft_ventas['venta'].sum():,.0f}".replace(",", "."))
+        print(f"··· Cantidad: {ft_ventas['cantidad'].sum():,.0f}".replace(",", "."))
+        print(f"··· Nro de filas {len(ft_ventas):,.0f}".replace(",", "."))
+        print("#########################################################################\n")
+
+        return df 

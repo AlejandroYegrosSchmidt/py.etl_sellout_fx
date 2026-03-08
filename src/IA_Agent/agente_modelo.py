@@ -49,13 +49,20 @@ def extraer_parametros_excel(ruta_archivo):
     3. Determina el índice de la fila (empezando en 0) donde comienzan los datos reales.
     4. Mapea la posición (índice 0-based) de las siguientes columnas:
        - cod_producto, producto_name, cod_sucursal, cadena, venta, cantidad, stock.
-
+    5. Determinar el nombre de la cadena a ser analizada. Las cadenas pueden ser TATA, GDU, MACRO,TIENDA O POLAKOF. Encontrarás el nombre de la cadena en el nombre del archivo
+    
     Reglas:
     - Si el archivo contiene 'gdu ventas', considera:
         1. El cod_producto es ser la columna que contiene el nombre del producto. En este archivo el cod_producto debe ser el mismo valor que se encuentra en la columna "producto".
     - Si el archivo contiene 'tata ventas ', considera:
-        1. El codigo del producto se encuentra en la columan ARTC_ARTC_ID
-        2. El codigo de la sucursal se encuentra en la columan GEOG_LOCL_ID
+        1. El codigo de fecha se encuentra en la columan TIEM_DIA_ID
+        2. El codigo del producto se encuentra en la columan ARTC_ARTC_ID
+        3. El codigo del nombre del producto se encuentra en la columna ARTC_ARTC_DESC
+        4. El codigo de la sucursal se encuentra en la columan GEOG_LOCL_ID
+        5. el codigo de la sucursal se encuentra en la columan GEOG_LOCL_DESC
+        5. El codigo de la cadena es -1
+        6. El codigo de la venta se encuentra en la columana VNTA_IMPORTE_SIN_IVA  
+        7. La cantidad se encuentra en la columan VNTA_UNIDADES
     - Si no encuentras una columna exacta, busca sinónimos o nombres similares.
     - JAMAS ASUMAS QUE UNA COLUMNA EXISTE. POR EJEMPLO, SI NO ENCUENTRAS UNA COLUMNA DE 'STOCK', ASIGNA -1 A STOCK, NO ASUMAS QUE ES LA ÚLTIMA COLUMNA O ALGO ASÍ.
     - Devuelve ESTRICTAMENTE un objeto JSON.
@@ -67,10 +74,12 @@ def extraer_parametros_excel(ruta_archivo):
     "cod_producto": valor del índice de la columna cod_producto,
     "producto_name": valor del índice de la columna producto_name, 
     "cod_sucursal": valor del índice de la columna cod_sucursal,
+    "sucursal_name": valor del índice de la columna sucursal,
     "cod_cadena": valor del índice de la columna cadena,    
     "venta": valor del índice de la columna venta,
     "cantidad": valor del índice de la columna cantidad,
     "stock": valor del índice de la columna stock
+    "cadena": El nombre de la cadena a ser analizada (TATA, GDU, MACRO, TIENDA O POLAKOF)
     }
     """
 
