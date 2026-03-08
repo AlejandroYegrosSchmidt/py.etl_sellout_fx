@@ -44,7 +44,7 @@ def extraer_parametros_excel(ruta_archivo):
     La ruta del nombre del archivo es: {ruta_archivo}
 
     Tareas:
-    1. Identifica el nombre de la hoja que contiene los datos principales.
+    1. Identifica el nombre del archivo.
     2. Determina el índice de la fila (empezando en 0) que contiene los nombres de las columnas (headers).
     3. Determina el índice de la fila (empezando en 0) donde comienzan los datos reales.
     4. Mapea la posición (índice 0-based) de las siguientes columnas:
@@ -52,12 +52,12 @@ def extraer_parametros_excel(ruta_archivo):
 
     Reglas:
     - Si el archivo contiene 'gdu ventas', considera:
-        1. El cod_producto es ser la columna que contiene el nombre del producto.
+        1. El cod_producto es ser la columna que contiene el nombre del producto. En este archivo el cod_producto debe ser el mismo valor que se encuentra en la columna "producto".
     - Si el archivo contiene 'tata ventas ', considera:
         1. El codigo del producto se encuentra en la columan ARTC_ARTC_ID
         2. El codigo de la sucursal se encuentra en la columan GEOG_LOCL_ID
     - Si no encuentras una columna exacta, busca sinónimos o nombres similares.
-    - Si una columna definitivamente no existe, asigna -1.JAMAS ASUMAS QUE UNA COLUMNA EXISTE. POR EJEMPLO, SI NO ENCUENTRAS UNA COLUMNA DE 'STOCK', ASIGNA -1 A STOCK, NO ASUMAS QUE ES LA ÚLTIMA COLUMNA O ALGO ASÍ.
+    - JAMAS ASUMAS QUE UNA COLUMNA EXISTE. POR EJEMPLO, SI NO ENCUENTRAS UNA COLUMNA DE 'STOCK', ASIGNA -1 A STOCK, NO ASUMAS QUE ES LA ÚLTIMA COLUMNA O ALGO ASÍ.
     - Devuelve ESTRICTAMENTE un objeto JSON.
 
     Formato de salida esperado:
@@ -67,7 +67,7 @@ def extraer_parametros_excel(ruta_archivo):
     "cod_producto": valor del índice de la columna cod_producto,
     "producto_name": valor del índice de la columna producto_name, 
     "cod_sucursal": valor del índice de la columna cod_sucursal,
-    "cadena": valor del índice de la columna cadena,
+    "cod_cadena": valor del índice de la columna cadena,    
     "venta": valor del índice de la columna venta,
     "cantidad": valor del índice de la columna cantidad,
     "stock": valor del índice de la columna stock
@@ -92,13 +92,17 @@ def extraer_parametros_excel(ruta_archivo):
             datos_finales = resultado[0]
         else:
             datos_finales = resultado
-
-        print(f"--- Estructura detectada para: {os.path.basename(ruta_archivo)} ---")
+        print("#########################################################################")
+        print(f"--- Estructura detectada para: {os.path.basename(ruta_archivo)} ---\n Las Id de las columnas son:")
+        print("#########################################################################")
         
         # Iteramos sobre datos_finales que ahora garantizamos que es un diccionario
         if isinstance(datos_finales, dict):
             for llave, valor in datos_finales.items(): 
-                print(f"{llave}: {valor}")
+                print(f"##... {llave}: {valor}")
+            print("#########################################################################")
+            print("--- Fin de la estructura detectada ---")
+            print("#########################################################################")
         else:
             print("El modelo devolvió un formato inesperado:", datos_finales)
             
@@ -111,5 +115,6 @@ def extraer_parametros_excel(ruta_archivo):
             os.remove(nombre_temp)
 
 # if __name__ == "__main__":
-#     ruta = r"C:\Users\aleja\Desktop\Drive\Clientes\Fortylex\fortylex_sellout_etl\py.etl_sellout_fx\data\ventas_tienda_febrero_26.xlsx"
+#     ruta = r"C:\Users\aleja\Desktop\Drive\Clientes\Fortylex\fortylex_sellout_etl\py.etl_sellout_fx\data\gdu_ventas_febrero_26.xlsx"
 #     config = extraer_parametros_excel(ruta)
+    

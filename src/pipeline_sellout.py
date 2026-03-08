@@ -1,10 +1,11 @@
 import pandas as pd
-import re
+from IA_Agent import agente_modelo  
 
-class SellOutPipeline:
-    def __init__(self, engine):
-        self.engine = engine
-    
+class processing_pipeline:
+    def __init__(self, ruta):
+        self.engine = None
+        self.ruta = ruta 
+        
     def datavalidation(self, df = None, df_colum_validate = None, tabla_sql= None, columna_sql = None):
         """
         Docstring for datavalidation
@@ -37,57 +38,35 @@ class SellOutPipeline:
             print("No hay datos para limpiar. Carga los datos primero.") 
         return self.df
     
-    def columns_validation(self):
+    def create_final_dataframe(self):
             """
-            Crear un df con todas las columnas que necesitamos y sus respectivos id.
-            El df es creado en función a la extración de la ID de las columnas mediante IA.
-            
-            Agregar nuevas columnas:
-             Si se desea agregar nuevas columnas es necesario agregarlas en la función extraer_id_columnas del agente modelo.
-
+            Crea un DF limpio mapeando cada columna deseada individualmente.
             """
-            if self._df_final is not None:
-             return self._df_final
+            df_config = agente_modelo.extraer_parametros_excel(self.ruta)
 
-            # Recibimos el df limpio
-            df = self.clean_data()
-            print('Dataframe recibido, se ajustaron los nombres de las columnas\n')
-            print(df.head())
- 
-            # Diccionario con las id de las columnas
-            values_columns_values = agent_modelo.extraer_id_columnas(df)      
-            try: 
-                # Usamos un agente IA para determinar la Id de cada columna
-                # Verificamos que las columnas existan, ajustamos el nombre y si la columna no existe creamos la columna con None
-                for key, val in values_columns_values.items():
-                    if val != -1:
-                        df = df.rename(columns={df.columns[val]: key})
-                    else:
-                        df[key] = 0
-                # Nos quedamos solo con las columnas necesarias
-                df = df.loc[:, [key for key in values_columns_values.keys()]]
-            except Exception as e: 
-                    print(f"Error al extraer las ID de las columnas: {e}")
-                    return None
-      
+            # 1. Carga inicial del Excel
+            df_raw = pd.read_excel(self.ruta, header=df_config['header'])
             
-            df['posicion_arancelaria'] = df['posicion_arancelaria'].astype(str).str.strip()
-            df['operacion'] = df['operacion'].astype(str).str.strip()
-             
-            # Las partidas arancelarias que seran exportadas son
-            # 8429 : Maquinarias
-            # 8717 : Semiremolques
-            # 8701 : Tractores
-            # 8702 y 8703 : Autobuses y Automoviles de Turismo
-            # 8704 : Vehiculos para el transporte de mercaderias
-            # 8705 : Camiones grúa, camiones de bomberos, camiones hormigonera, coches barredera, coches esparcidores, coches taller, coches radiológicos
-            # df = df[df['posicion_arancelaria'].str.contains(r'^(8701|8429|8702|8703|8704|8716)', na=False)]
-            df = df[df['posicion_arancelaria'].str.contains(r'^(8716)', na=False)]
-            df = df[df['operacion'].str.contains('IMPORTACION', case=False, na=False)]
-            df['valor_cif'] = df['valor_flete'] + df['valor_seguro'] + df['valor_fob']
-            df['cod_ncm'] = df['posicion_arancelaria'].astype(str).str.strip().str[:10]
-            
-            print('\nDataframe preprocesados \n')           
-            print(df.head())
+            # 2. Diccionario de columnas que queremos (mapeo de la IA)
+            # Excluimos metadatos del agente
+            target_columns = {k: v for k, v in df_config.items() if k not in ['header', 'sheet_name', 'data_start_row']}
 
-            return df
+            # 3. Construir el DataFrame final columna por columna
+            # Esto evita duplicados y desorden
+            df_final = pd.DataFrame()
+
+            for nombre_estandar, indice_excel in target_columns.items():
+                if indice_excel >= 0 and indice_excel < len(df_raw.columns):
+                    # Extraemos la columna del Excel original por su posición 
+                    # y la asignamos con el nombre estándar (fecha, venta, etc.)
+                    df_final[nombre_estandar] = df_raw.iloc[:, indice_excel]
+                else:
+                    # Si la IA no la encontró, la creamos vacía para no romper el esquema SQL
+                    df_final[nombre_estandar] = None
+
+            print("#########################################################################")
+            print('\n Dataframe preprocesado con éxito (Columnas únicas) \n')           
+            print("#########################################################################")
+            print(df_final.head())
+            
+            return df_final
