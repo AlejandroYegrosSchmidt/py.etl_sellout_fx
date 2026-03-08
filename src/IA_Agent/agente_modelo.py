@@ -39,48 +39,61 @@ def extraer_parametros_excel(ruta_archivo):
     )
 
     # Tu Prompt original (se mantiene exactamente igual)
-    prompt = """
-    Analiza el archivo Excel adjunto y determina su estructura técnica para un proceso de ETL.
-    La ruta del nombre del archivo es: {ruta_archivo}
+    # Extraemos solo el nombre para que la IA no se pierda en la ruta de carpetas
+    nombre_archivo_limpio = os.path.basename(ruta_archivo)
 
-    Tareas:
-    1. Identifica el nombre del archivo.
-    2. Determina el índice de la fila (empezando en 0) que contiene los nombres de las columnas (headers).
-    3. Determina el índice de la fila (empezando en 0) donde comienzan los datos reales.
-    4. Mapea la posición (índice 0-based) de las siguientes columnas:
-       - cod_producto, producto_name, cod_sucursal, cadena, venta, cantidad, stock.
-    5. Determinar el nombre de la cadena a ser analizada. Las cadenas pueden ser TATA, GDU, MACRO,TIENDA O POLAKOF. Encontrarás el nombre de la cadena en el nombre del archivo
+    prompt = f"""
+    Analiza el contenido del archivo adjunto y el nombre del archivo proporcionado para determinar la estructura técnica de un proceso ETL.
+
+    CONTEXTO:
+    - Nombre del archivo: {nombre_archivo_limpio}
+    - Formato del contenido: CSV (procedente de Excel)
+
+    TAREAS:
+    1. Identifica la 'base' basándote EXCLUSIVAMENTE en el nombre del archivo ({nombre_archivo_limpio}). 
+    - Si contiene 'gdu', la base es GDU.
+    - Si contiene 'tata', la base es TATA.
+    - Si contiene 'macro', la base es MACRO.
+    - Si contiene 'tienda', la base es TIENDA.
+    - Si contiene 'polakof', la base es POLAKOF.
+    - De lo contrario, usa 'DESCONOCIDA'.
+
+    2. Determina el índice de fila del header (nombres de columnas) y el índice de inicio de datos.
+
+    3. Mapea los índices de las columnas (0-based) siguiendo estas reglas específicas por base:
+
+    SI LA BASE ES 'GDU':
+    - cod_producto y producto_name deben apuntar al índice de la columna que contiene el nombre del producto.
     
-    Reglas:
-    - Si el archivo contiene 'gdu ventas', considera:
-        1. El cod_producto es ser la columna que contiene el nombre del producto. En este archivo el cod_producto debe ser el mismo valor que se encuentra en la columna "producto".
-    - Si el archivo contiene 'tata ventas ', considera:
-        1. El codigo de fecha se encuentra en la columan TIEM_DIA_ID
-        2. El codigo del producto se encuentra en la columan ARTC_ARTC_ID
-        3. El codigo del nombre del producto se encuentra en la columna ARTC_ARTC_DESC
-        4. El codigo de la sucursal se encuentra en la columan GEOG_LOCL_ID
-        5. el codigo de la sucursal se encuentra en la columan GEOG_LOCL_DESC
-        5. El codigo de la cadena es -1
-        6. El codigo de la venta se encuentra en la columana VNTA_IMPORTE_SIN_IVA  
-        7. La cantidad se encuentra en la columan VNTA_UNIDADES
-    - Si no encuentras una columna exacta, busca sinónimos o nombres similares.
-    - JAMAS ASUMAS QUE UNA COLUMNA EXISTE. POR EJEMPLO, SI NO ENCUENTRAS UNA COLUMNA DE 'STOCK', ASIGNA -1 A STOCK, NO ASUMAS QUE ES LA ÚLTIMA COLUMNA O ALGO ASÍ.
+    SI LA BASE ES 'TATA':
+    - fecha: TIEM_DIA_ID
+    - cod_producto: ARTC_ARTC_ID
+    - producto_name: ARTC_ARTC_DESC
+    - cod_sucursal: GEOG_LOCL_ID
+    - sucursal_name: GEOG_LOCL_DESC
+    - cod_cadena: Asignar -1
+    - venta: VNTA_IMPORTE_SIN_IVA
+    - cantidad: VNTA_UNIDADES
+
+    REGLAS GENERALES:
+    - Si no encuentras una columna exacta, busca sinónimos (ej. 'vta' por 'venta', 'cant' por 'cantidad').
+    - Si una columna no existe (como 'stock' en muchos casos), asigna -1. NO inventes índices.
     - Devuelve ESTRICTAMENTE un objeto JSON.
 
-    Formato de salida esperado:
-    {
-    "fecha": indice de la columna que contiene la fecha,
-    "header": valor del índice de la fila del header,
-    "cod_producto": valor del índice de la columna cod_producto,
-    "producto_name": valor del índice de la columna producto_name, 
-    "cod_sucursal": valor del índice de la columna cod_sucursal,
-    "sucursal_name": valor del índice de la columna sucursal,
-    "cod_cadena": valor del índice de la columna cadena,    
-    "venta": valor del índice de la columna venta,
-    "cantidad": valor del índice de la columna cantidad,
-    "stock": valor del índice de la columna stock
-    "cadena": El nombre de la cadena a ser analizada (TATA, GDU, MACRO, TIENDA O POLAKOF)
-    }
+    FORMATO DE SALIDA:
+    {{
+    "fecha": int,
+    "header": int,
+    "cod_producto": int,
+    "producto_name": int,
+    "cod_sucursal": int,
+    "sucursal_name": int,
+    "cod_cadena": int,
+    "venta": int,
+    "cantidad": int,
+    "stock": int,
+    "base": "STRING"
+    }}
     """
 
     @retry(wait=wait_exponential(multiplier=1, min=2, max=10), stop=stop_after_attempt(3)) 

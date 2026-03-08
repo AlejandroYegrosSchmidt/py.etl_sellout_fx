@@ -55,7 +55,7 @@ class processing_pipeline:
             
             # 2. Diccionario de columnas que queremos (mapeo de la IA)
             # Excluimos metadatos del agente
-            exclude_keys = ['header', 'sheet_name', 'data_start_row','cadena']  
+            exclude_keys = ['header', 'sheet_name', 'data_start_row','base']  
             target_columns = {key: value for key, value in self.df_config.items() if key not in exclude_keys}
 
             # 3. Construir el DataFrame final columna por columna
@@ -94,20 +94,31 @@ class processing_pipeline:
         Creamos la dimension articulos de cadena
         """
         df = self.df.copy()
+        print("#########################################################################")
+        print(" Dimension articulos")
+        print("#########################################################################\n")
 
-        if self.df_config.get('cadena') == 'TATA':
+        if self.df_config.get('base') == 'TATA':
             try:
                 # Creamos la dimension de articulos
-                print("#########################################################################")
-                print(" Dimension articulos")
-                print("#########################################################################\n")
                 dim_articulos = df[['cod_producto','producto_name']]
                 dim_articulos = dim_articulos.drop_duplicates(subset='cod_producto')
                 dim_articulos = dim_articulos[dim_articulos['cod_producto'].notnull()]
                 print(dim_articulos)
-
             except Exception as e:
                 print(f"Error en la dimension articulos: {e}")
+
+        elif self.df_config.get('base') == 'GDU':
+            try:
+                # Creamos la dimension de articulos
+                dim_articulos = df[['cod_producto']].copy()
+                dim_articulos[['cod_producto','producto_name']] = dim_articulos['cod_producto'].str.split('-', expand=True, n=1)
+                dim_articulos[['cod_producto', 'producto_name']] = dim_articulos[['cod_producto', 'producto_name']].apply(lambda x: x.str.strip())
+                dim_articulos = dim_articulos.drop_duplicates(subset='cod_producto')
+                print(dim_articulos)
+
+            except Exception as e:
+                print(f"Error en la dimension sucursal: {e}")
         
         print("#########################################################################")
         print('Resumen')
@@ -122,15 +133,30 @@ class processing_pipeline:
         """
         df = self.df.copy()
 
-        if self.df_config.get('cadena') == 'TATA':
+        if self.df_config.get('base') == 'TATA':
             try:
                 # Creamos la dimension de articulos
                 print("#########################################################################")
                 print(" Dimension sucursal")
                 print("#########################################################################\n")
-                dim_sucursales = df[['cod_sucursal','sucursal_name']]
+                dim_sucursales = df[['cod_sucursal','sucursal_name']].copy()
                 dim_sucursales = dim_sucursales.drop_duplicates(subset='cod_sucursal')
                 dim_sucursales = dim_sucursales[dim_sucursales['cod_sucursal'].notnull()]
+                print(dim_sucursales)
+
+            except Exception as e:
+                print(f"Error en la dimension sucursal: {e}")
+
+        if self.df_config.get('base') == 'GDU':
+            try:
+                # Creamos la dimension de articulos
+                print("#########################################################################")
+                print(" Dimension sucursal")
+                print("#########################################################################\n")
+                dim_sucursales = df[['cod_sucursal']].copy()
+                dim_sucursales[['cod_sucursal','sucursal_name']] = dim_sucursales['cod_sucursal'].str.split('-', expand=True, n=1)
+                dim_sucursales[['cod_sucursal', 'sucursal_name']] = dim_sucursales[['cod_sucursal', 'sucursal_name']].apply(lambda x: x.str.strip())
+                dim_sucursales = dim_sucursales.drop_duplicates(subset='cod_sucursal')
                 print(dim_sucursales)
 
             except Exception as e:
@@ -149,22 +175,37 @@ class processing_pipeline:
         """
         df = self.df.copy()
 
-        if self.df_config.get('cadena') == 'TATA':
+        if self.df_config.get('base') == 'TATA':
             try:
                 # Creamos la dimension de articulos
                 print("#########################################################################")
                 print(" Fact table ventas")
                 print("#########################################################################\n")
-                ft_ventas = df[['fecha','cod_producto','cod_sucursal','venta','cantidad','posting_date']]
-                print(ft_ventas)
+                df = df[['fecha','cod_producto','cod_sucursal','venta','cantidad','posting_date']]
+                print(df)
+            except Exception as e:
+                print(f"Error en la fact table ventas: {e}")
+        
+        elif self.df_config.get('base') == 'GDU':
+            try:
+                # Creamos la dimension de articulos
+                print("#########################################################################")
+                print(" Fact table ventas")
+                print("#########################################################################\n")
+                df = df[['fecha','cod_producto','cod_sucursal','venta','cantidad','posting_date']]
+                df[['cod_producto','producto']] = df['cod_producto'].str.split('-', expand=True, n=1)
+                df[['cod_sucursal','sucursal']] = df['cod_sucursal'].str.split('-', expand=True, n=1)
+                df[['cod_producto', 'cod_sucursal']] = df[['cod_producto', 'cod_sucursal']].apply(lambda x: x.str.strip())
+                df = df.drop(columns=['producto', 'sucursal'])
+                print(df)
             except Exception as e:
                 print(f"Error en la fact table ventas: {e}")
         
         print("#########################################################################")
         print('Resumen')
-        print(f"··· Ventas: {ft_ventas['venta'].sum():,.0f}".replace(",", "."))
-        print(f"··· Cantidad: {ft_ventas['cantidad'].sum():,.0f}".replace(",", "."))
-        print(f"··· Nro de filas {len(ft_ventas):,.0f}".replace(",", "."))
+        print(f"··· Ventas: {df['venta'].sum():,.0f}".replace(",", "."))
+        print(f"··· Cantidad: {df['cantidad'].sum():,.0f}".replace(",", "."))
+        print(f"··· Nro de filas {len(df):,.0f}".replace(",", "."))
         print("#########################################################################\n")
 
         return df 
